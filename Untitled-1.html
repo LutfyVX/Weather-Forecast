@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #map {
+            height: 200px;
+            width: 100%;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-3xl shadow-lg max-w-4xl w-full overflow-hidden">
+        <div class="flex flex-col md:flex-row">
+            <!-- Left Panel -->
+            <div class="bg-white p-6 md:w-1/3 flex flex-col">
+                <!-- Search Bar -->
+                <div class="flex items-center mb-8 bg-gray-100 rounded-full px-4 py-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="inputCity" placeholder="Search for places ..." class="bg-transparent border-none focus:outline-none ml-2 w-full text-sm">
+                    <button id="btnGetWeather" class="p-1 rounded-full bg-gray-200 ml-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Current Weather Icon -->
+                <div class="mb-4 flex justify-center" id="weatherIconContainer">
+                    <div class="relative">
+                        <div class="absolute -top-2 -left-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-200" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <img id="weatherIcon" src="./animated/cloudy.svg" alt="Weather" class="h-24 w-24">
+                    </div>
+                </div>
+                
+                <!-- Temperature -->
+                <div class="text-center mb-6">
+                    <h1 class="text-6xl font-light" id="temperature">--°C</h1>
+                    <div id="weatherInfo" class="mt-2 text-gray-600">
+                        <p class="text-lg font-bold">--</p>
+                        <p class="text-lg text-center">--:--</p>
+                    </div>
+                </div>
+                
+                <!-- Weather Condition -->
+                <div class="border-t border-gray-200 pt-4 pb-2 text-center">
+                    <p class="flex items-center justify-center mb-2">
+                        <span class="mr-2" id="weatherCondition">--</span>
+                    </p>
+                    <p class="flex items-center justify-center text-sm text-gray-600">
+                        <span class="flex items-center mr-2">
+                            <span class="inline-block w-1 h-4 bg-blue-700 mr-0.5"></span>
+                            <span class="inline-block w-1 h-4 bg-blue-700 mr-0.5"></span>
+                            <span class="inline-block w-1 h-4 bg-blue-700 mr-0.5"></span>
+                        </span>
+                        <span>Humidity: <span id="humidity">--%</span></span>
+                    </p>
+                </div>
+                
+                <!-- Location Map -->
+                <div class="mt-4">
+                    <div id="map" class="h-40 w-full rounded-lg overflow-hidden"></div>
+                </div>
+            </div>
+            
+            <!-- Right Panel -->
+            <div class="bg-gray-50 p-6 md:w-2/3">
+                <!-- Toggle -->
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex space-x-2">
+                        <button class="px-4 py-1 text-sm">Today</button>
+                        <button class="px-4 py-1 text-sm font-medium border-b-2 border-black">Week</button>
+                    </div>
+                    <div class="flex items-center">
+                        <button class="bg-gray-800 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">°C</button>
+                        <span class="mx-2 text-gray-400">|</span>
+                        <button class="text-gray-400 rounded-full w-6 h-6 flex items-center justify-center text-xs">°F</button>
+                    </div>
+                </div>
+                
+                <!-- Weather Forecast (will be populated by JS) -->
+                <div id="forecast" class="grid grid-cols-7 gap-2 mb-8">
+                    <!-- Forecast cards will be inserted here by JavaScript -->
+                </div>
+                
+                <!-- Today's Highlights -->
+                <h2 class="font-medium text-lg mb-4">Today's Highlights</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- UV Index -->
+                    <div class="bg-white rounded-lg p-4">
+                        <p class="text-sm text-gray-500 mb-2">UV Index</p>
+                        <div class="flex items-center justify-between">
+                            <div class="relative w-24 h-12">
+                                <svg viewBox="0 0 100 50" class="w-full h-full">
+                                    <path d="M 10 40 A 40 40 0 0 1 90 40" stroke="#fde68a" stroke-width="10" fill="none" />
+                                    <path d="M 10 40 A 40 40 0 0 1 40 13" stroke="#fbbf24" stroke-width="10" fill="none" />
+                                </svg>
+                            </div>
+                            <div id="uvIndex" class="text-4xl font-light">--</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Wind Status -->
+                    <div class="bg-white rounded-lg p-4">
+                        <p class="text-sm text-gray-500 mb-2">Wind Status</p>
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <span id="windSpeed" class="text-4xl font-light">--</span>
+                                <span class="text-sm text-gray-500">km/h</span>
+                            </div>
+                            <div class="flex items-center mb-1">
+                                <div class="bg-indigo-900 rounded-full w-6 h-6 flex items-center justify-center text-white text-xs mr-2">
+                                    <span id="windDirection">--</span>
+                                </div>
+                                <span id="windDirectionText" class="text-sm">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sunrise & Sunset -->
+                    <div class="bg-white rounded-lg p-4">
+                        <p class="text-sm text-gray-500 mb-2">Sunrise & Sunset</p>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-yellow-300 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-xs">↑</span>
+                                </div>
+                                <div>
+                                    <p id="sunrise" class="font-medium">--:-- AM</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-yellow-300 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-xs">↓</span>
+                                </div>
+                                <div>
+                                    <p id="sunset" class="font-medium">--:-- PM</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Humidity -->
+                    <div class="bg-white rounded-lg p-4">
+                        <p class="text-sm text-gray-500 mb-2">Humidity</p>
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <span id="humidityDetail" class="text-4xl font-light">--</span>
+                                <span class="text-lg align-top">%</span>
+                            </div>
+                            <div class="mb-1">
+                                <span class="bg-blue-600 rounded-full w-2 h-2 inline-block"></span>
+                                <span id="humidityStatus" class="text-sm ml-1">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Visibility -->
+                    <div class="bg-white rounded-lg p-4">
+                        <p class="text-sm text-gray-500 mb-2">Visibility</p>
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <span id="visibility" class="text-4xl font-light">--</span>
+                                <span class="text-sm text-gray-500">km</span>
+                            </div>
+                            <div class="mb-1">
+                                <span id="visibilityStatus" class="text-sm">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Air Pressure -->
+                    <div class="bg-white rounded-lg p-4">
+                        <p class="text-sm text-gray-500 mb-2">Air Pressure</p>
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <span id="pressure" class="text-4xl font-light">--</span>
+                                <span class="text-sm text-gray-500">hPa</span>
+                            </div>
+                            <div class="mb-1">
+                                <span id="pressureStatus" class="text-sm ml-1">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map; // Variabel global untuk menyimpan peta
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+
+                    // Ambil data cuaca berdasarkan koordinat
+                    await getWeatherByCoordinates(lat, lon);
+                }, (error) => {
+                    console.error("Gagal mendapatkan lokasi:", error);
+                    document.getElementById("weatherInfo").innerHTML = `<p class="text-red-500">Gagal mendapatkan lokasi.</p>`;
+                });
+            } else {
+                alert("Geolocation tidak didukung di browser ini.");
+            }
+        });
+
+        document.getElementById("btnGetWeather").addEventListener("click", async () => {
+            const city = document.getElementById("inputCity").value.trim();
+            if (!city) {
+                alert("Masukkan nama kota!");
+                return;
+            }
+
+            await getWeatherByCity(city);
+        });
+
+        // Function to handle "Enter" key press in the search box
+        document.getElementById("inputCity").addEventListener("keypress", async (e) => {
+            if (e.key === "Enter") {
+                const city = document.getElementById("inputCity").value.trim();
+                if (city) {
+                    await getWeatherByCity(city);
+                }
+            }
+        });
+
+        // Fungsi mendapatkan cuaca berdasarkan koordinat
+        async function getWeatherByCoordinates(lat, lon) {
+            const apiKey = "df01bb552ae04b1f2944902ebaead8d2";
+            const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+            const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+
+            await fetchWeather(apiUrl, forecastUrl);
+        }
+
+        // Fungsi mendapatkan cuaca berdasarkan nama kota
+        async function getWeatherByCity(city) {
+            const apiKey = "df01bb552ae04b1f2944902ebaead8d2";
+            const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+            const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey}`;
+
+            await fetchWeather(apiUrl, forecastUrl);
+        }
+
+        // Fungsi untuk fetch data cuaca
+        async function fetchWeather(apiUrl, forecastUrl) {
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error("Gagal mengambil data cuaca!");
+
+                const data = await response.json();
+
+                const temperature = Math.round(data.main.temp);
+                const humidity = data.main.humidity;
+                const weatherCondition = data.weather[0].main;
+                const weatherDescription = data.weather[0].description;
+                const city = data.name;
+                const timezoneOffset = data.timezone; // Offset dalam detik
+                const windSpeed = (data.wind.speed * 3.6).toFixed(2); // Convert from m/s to km/h
+                const windDeg = data.wind.deg;
+                const windDirection = getWindDirection(windDeg);
+                const visibility = (data.visibility / 1000).toFixed(1); // Convert from m to km
+                const pressure = data.main.pressure;
+                const country = data.sys.country;
+
+                // Hitung waktu lokal berdasarkan zona waktu kota
+                const localTime = getLocalTime(timezoneOffset);
+
+                // Get sunrise and sunset times
+                const sunriseTime = getLocalTimeFromTimestamp(data.sys.sunrise, timezoneOffset);
+                const sunsetTime = getLocalTimeFromTimestamp(data.sys.sunset, timezoneOffset);
+
+                // Perbarui elemen HTML
+                document.getElementById("weatherInfo").innerHTML = `
+                    <p class="text-lg font-bold">${city}, ${country}</p>
+                    <p class="text-lg text-center">${localTime}</p>
+                `;
+
+                document.getElementById("temperature").innerText = `${temperature}°C`;
+                document.getElementById("humidity").innerText = `${humidity}%`;
+                document.getElementById("humidityDetail").innerText = humidity;
+                document.getElementById("weatherCondition").innerText = weatherDescription;
+                document.getElementById("weatherIcon").src = getWeatherIcon(weatherCondition);
+                document.getElementById("weatherIcon").alt = weatherCondition;
+                document.getElementById("windSpeed").innerText = windSpeed;
+                document.getElementById("windDirectionText").innerText = windDirection;
+                document.getElementById("windDirection").innerText = "↓";
+                document.getElementById("visibility").innerText = visibility;
+                document.getElementById("pressure").innerText = pressure;
+                document.getElementById("sunrise").innerText = sunriseTime;
+                document.getElementById("sunset").innerText = sunsetTime;
+                
+                // Set humidity status
+                const humidityStatus = humidity < 30 ? "Dry" : humidity > 70 ? "Humid" : "Normal";
+                document.getElementById("humidityStatus").innerText = humidityStatus;
+                
+                // Set visibility status
+                const visibilityStatus = visibility < 1 ? "Poor" : visibility > 10 ? "Excellent" : "Average";
+                document.getElementById("visibilityStatus").innerText = visibilityStatus;
+                
+                // Set pressure status
+                const pressureStatus = pressure < 1000 ? "Low" : pressure > 1020 ? "High" : "Normal";
+                document.getElementById("pressureStatus").innerText = pressureStatus;
+                
+                // Fetch and display UV index (if available in your API)
+                document.getElementById("uvIndex").innerText = "5";  // Example value, replace with actual data if available
+
+                // Perbarui peta
+                updateMap(data.coord.lat, data.coord.lon, city, temperature, weatherCondition);
+                
+                // Fetch forecast data
+                try {
+                    const forecastResponse = await fetch(forecastUrl);
+                    if (forecastResponse.ok) {
+                        const forecastData = await forecastResponse.json();
+                        updateForecast(forecastData, timezoneOffset);
+                    }
+                } catch (error) {
+                    console.error("Forecast error:", error);
+                }
+                
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById("weatherInfo").innerHTML = `<p class="text-red-500">Gagal mengambil data cuaca.</p>`;
+            }
+        }
+
+        // Fungsi untuk mendapatkan ikon cuaca
+        function getWeatherIcon(condition) {
+            const weatherIcons = {
+                Clear: "./animated/clear-day.svg",
+                Clouds: "./animated/cloudy.svg",
+                Rain: "./animated/rainy-2.svg",
+                Thunderstorm: "./animated/scattered.svg",
+                Drizzle: "./animated/drizzle.svg",
+                Snow: "./animated/snow.svg",
+                Mist: "./animated/mist.svg",
+                Fog: "./animated/fog.svg"
+            };
+
+            return weatherIcons[condition] || "./animated/unknown.svg";
+        }
+
+        // Function to get wind direction from degrees
+        function getWindDirection(degrees) {
+            const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            const index = Math.round((degrees % 360) / 22.5);
+            return directions[index % 16];
+        }
+
+        // Fungsi untuk memperbarui peta
+        function updateMap(lat, lon, city, temperature, condition) {
+            if (!map) {
+                map = L.map("map").setView([lat, lon], 10);
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+            } else {
+                map.setView([lat, lon], 10);
+            }
+
+            // Hapus marker lama sebelum menambahkan yang baru
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            L.marker([lat, lon])
+                .addTo(map)
+                .bindPopup(`<b>${city}</b><br>Suhu: ${temperature}°C<br>Cuaca: ${condition}`)
+                .openPopup();
+        }
+
+        // CORRECTED: Function to get local time based on timezone offset
+        function getLocalTime(timezoneOffset) {
+            // Get current UTC time in milliseconds
+            const utcTime = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
+            
+            // Calculate the destination time by adding the timezone offset (in milliseconds)
+            const localTime = new Date(utcTime + (timezoneOffset * 1000));
+            
+            return localTime.toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false
+            });
+        }
+
+        // Function to convert timestamp to local time for sunrise/sunset
+        function getLocalTimeFromTimestamp(timestamp, timezoneOffset) {
+            // Convert to UTC by removing the local timezone offset
+            const utcTime = (timestamp * 1000) + (new Date().getTimezoneOffset() * 60000);
+            
+            // Add the destination timezone offset
+            const localTime = new Date(utcTime + (timezoneOffset * 1000));
+            
+            return localTime.toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+            });
+        }
+
+        // Function to update forecast display
+        function updateForecast(forecastData, timezoneOffset) {
+            const forecastContainer = document.getElementById("forecast");
+            forecastContainer.innerHTML = "";
+            
+            // Group forecast data by day
+            const dailyForecasts = {};
+            
+            forecastData.list.forEach(item => {
+                // Convert to local time based on city's timezone
+                const utcTime = new Date(item.dt * 1000).getTime() + (new Date().getTimezoneOffset() * 60000);
+                const localTime = new Date(utcTime + (timezoneOffset * 1000));
+                
+                const day = localTime.toLocaleDateString("en-US", { weekday: 'short' });
+                
+                if (!dailyForecasts[day]) {
+                    dailyForecasts[day] = {
+                        temps: [],
+                        icons: [],
+                        date: localTime
+                    };
+                }
+                
+                dailyForecasts[day].temps.push(item.main.temp);
+                dailyForecasts[day].icons.push(item.weather[0].main);
+            });
+            
+            // Get the most frequent weather condition for each day
+            Object.keys(dailyForecasts).forEach(day => {
+                const iconsCount = {};
+                dailyForecasts[day].icons.forEach(icon => {
+                    iconsCount[icon] = (iconsCount[icon] || 0) + 1;
+                });
+                
+                // Find the most frequent icon
+                let maxCount = 0;
+                let mostFrequentIcon = "";
+                Object.keys(iconsCount).forEach(icon => {
+                    if (iconsCount[icon] > maxCount) {
+                        maxCount = iconsCount[icon];
+                        mostFrequentIcon = icon;
+                    }
+                });
+                
+                dailyForecasts[day].mainIcon = mostFrequentIcon;
+                
+                // Calculate min and max temp
+                dailyForecasts[day].maxTemp = Math.round(Math.max(...dailyForecasts[day].temps));
+                dailyForecasts[day].minTemp = Math.round(Math.min(...dailyForecasts[day].temps));
+            });
+            
+            // Sort days starting from today
+            const today = new Date().toLocaleDateString("en-US", { weekday: 'short' });
+            const sortedDays = Object.keys(dailyForecasts).sort((a, b) => {
+                if (a === today) return -1;
+                if (b === today) return 1;
+                return dailyForecasts[a].date - dailyForecasts[b].date;
+            }).slice(0, 7); // Limit to 7 days
+            
+            // Create forecast cards
+            sortedDays.forEach(day => {
+                const forecast = dailyForecasts[day];
+                
+                const card = document.createElement("div");
+                card.className = "bg-white rounded-lg p-3 text-center";
+                card.innerHTML = `
+                    <p class="text-sm mb-2">${day}</p>
+                    <div class="flex justify-center mb-2">
+                        <img src="${getWeatherIcon(forecast.mainIcon)}" alt="${forecast.mainIcon}" class="h-8 w-8">
+                    </div>
+                    <p class="text-sm font-medium">${forecast.maxTemp}°</p>
+                    <p class="text-xs text-gray-400">${forecast.minTemp}°</p>
+                `;
+                
+                forecastContainer.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
