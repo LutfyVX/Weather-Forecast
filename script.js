@@ -8,8 +8,17 @@ document.getElementById("btnGetWeather").addEventListener("click", async () => {
     await getWeatherByCity(city);
 });
 
-let map; // Variabel global untuk menyimpan peta
-let tempChart; // Variabel global untuk chart
+document.getElementById("inputCity").addEventListener("keypress", async (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault(); // Mencegah form submit default (jika ada)
+        document.getElementById("btnGetWeather").click(); // Simulasikan klik tombol
+    }
+});
+
+
+//Mendapatkan Lokasi sekarang untuk mendapatkan cuaca
+let map; 
+let tempChart; 
 
 document.addEventListener("DOMContentLoaded", () => {
     if ("geolocation" in navigator) {
@@ -17,18 +26,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
 
-            // Ambil data cuaca berdasarkan koordinat
             await getWeatherByCoordinates(lat, lon);
         }, (error) => {
             console.error("Gagal mendapatkan lokasi:", error);
             document.getElementById("weatherInfo").innerHTML = `<p class="text-red-500">Gagal mendapatkan lokasi.</p>`;
         });
     } else {
-        alert("Geolocation tidak didukung di browser ini.");
+        alert("Maps tidak didukung di browser ini.");
     }
 });
 
-// Fungsi mendapatkan cuaca berdasarkan koordinat
+// mendapatkan cuaca berdasarkan koordinat berdsarkan lokasi
 async function getWeatherByCoordinates(lat, lon) {
     const apiKey = "df01bb552ae04b1f2944902ebaead8d2";
     const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
@@ -45,7 +53,7 @@ async function getWeatherByCity(city) {
     
     try {
         const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error("Gagal mengambil data cuaca!");
+        if (!response.ok) throw new Error("Error, mengambil data cuaca!");
         
         const data = await response.json();
         const lat = data.coord.lat;
@@ -57,24 +65,24 @@ async function getWeatherByCity(city) {
         await fetchWeather(apiUrl, forecastUrl, airQualityUrl);
     } catch (error) {
         console.error("Error:", error);
-        document.getElementById("weatherInfo").innerHTML = `<p class="text-red-500">Gagal mengambil data cuaca.</p>`;
+        document.getElementById("weatherInfo").innerHTML = `<p class="text-red-500 text-bold">Gagal mengambil data cuaca.</p>`;
     }
 }
 
 // Fungsi untuk fetch data cuaca
 async function fetchWeather(apiUrl, forecastUrl, airQualityUrl) {
     try {
-        // Fetch current weather
+        // Fetch cuaca/weather
         const weatherResponse = await fetch(apiUrl);
         if (!weatherResponse.ok) throw new Error("Gagal mengambil data cuaca!");
         const weatherData = await weatherResponse.json();
 
-        // Fetch forecast
+        // Fetch ramalan cuaca/forecast
         const forecastResponse = await fetch(forecastUrl);
         if (!forecastResponse.ok) throw new Error("Gagal mengambil data prakiraan!");
         const forecastData = await forecastResponse.json();
 
-        // Fetch air quality
+        // Fetch data Kualitas Udara, AQI
         const airQualityResponse = await fetch(airQualityUrl);
         if (!airQualityResponse.ok) throw new Error("Gagal mengambil data kualitas udara!");
         const airQualityData = await airQualityResponse.json();
@@ -101,19 +109,15 @@ async function fetchWeather(apiUrl, forecastUrl, airQualityUrl) {
         // Update metric boxes
         document.getElementById("temperature").innerText = `${temperature.toFixed(1)}°C`;
         document.getElementById("humidity").innerText = `${humidity}%`;
-        document.getElementById("windSpeed").innerText = `${(windSpeed * 3.6).toFixed(1)} km/h`; // Convert m/s to km/h
+        document.getElementById("windSpeed").innerText = `${(windSpeed * 3.6).toFixed(1)} km/h`; 
         document.getElementById("airQuality").innerText = getAirQualityText(aqi);
 
-        // Perbarui peta
         updateMap(weatherData.coord.lat, weatherData.coord.lon, city, temperature, weatherCondition);
         
-        // Update hourly forecast
         updateHourlyForecast(forecastData.list, timezoneOffset);
         
-        // Update 5-day forecast
         updateFiveDayForecast(forecastData.list, timezoneOffset);
         
-        // Update temperature chart
         updateTempChart(forecastData.list, timezoneOffset);
         
     } catch (error) {
@@ -122,23 +126,23 @@ async function fetchWeather(apiUrl, forecastUrl, airQualityUrl) {
     }
 }
 
-// Fungsi untuk mendapatkan ikon cuaca
+// menampilkan ikon cuaca yang mempunyai animasi
 function getWeatherIcon(condition) {
     const weatherIcons = {
         Clear: "./animated/clear-day.svg",
         Clouds: "./animated/cloudy.svg",
         Rain: "./animated/rainy-2.svg",
-        Thunderstorm: "./animated/scattered.svg",
-        Drizzle: "./animated/drizzle.svg",
+        Thunderstorm: "./animated/isolated-thunderstorms.svg",
+        Drizzle: "./animated/hail.svg",
         Snow: "./animated/snow.svg",
-        Mist: "./animated/mist.svg",
+        Mist: "./animated/haze.svg",
         Fog: "./animated/fog.svg"
     };
 
-    return weatherIcons[condition] || "./animated/unknown.svg";
+    return weatherIcons[condition] || "Gambar tidak dapat terproses!";
 }
 
-// Fungsi untuk memperbarui peta
+// Mengupdate peta untuk 
 function updateMap(lat, lon, city, temperature, condition) {
     if (!map) {
         map = L.map("map").setView([lat, lon], 10);
@@ -182,7 +186,7 @@ function getAirQualityText(aqi) {
         5: "Sangat Buruk"
     };
     
-    return aqiTexts[aqi] || "Tidak diketahui";
+    return aqiTexts[aqi] || "Kualitas udara di tempat mu tidak dapat dijangkau";
 }
 
 // Fungsi untuk memperbarui prakiraan per jam
@@ -263,7 +267,7 @@ function updateFiveDayForecast(forecastList, timezoneOffset) {
     });
 }
 
-// Fungsi untuk memperbarui chart suhu
+// ----------------------------------------
 function updateTempChart(forecastList, timezoneOffset) {
     const ctx = document.getElementById('tempChart').getContext('2d');
     
@@ -277,50 +281,9 @@ function updateTempChart(forecastList, timezoneOffset) {
     
     const temperatures = chartData.map(item => item.main.temp);
     
-    // Hapus chart sebelumnya jika ada
-    if (tempChart) {
-        tempChart.destroy();
-    }
-    
-    tempChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Suhu (°C)',
-                data: temperatures,
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                borderWidth: 2,
-                tension: 0.3,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.parsed.y.toFixed(1)}°C`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: false
-                }
-            }
-        }
-    });
-}
 
-// Helper function untuk mengelompokkan data berdasarkan hari
+}
+// Mengelompokkan hari untuk cuaca 5 hari kedepan
 function groupByDay(forecastList, timezoneOffset) {
     const groupedData = {};
     
@@ -338,12 +301,10 @@ function groupByDay(forecastList, timezoneOffset) {
     return groupedData;
 }
 
-// Helper function untuk menghitung rata-rata
 function calculateAverage(values) {
     return values.reduce((sum, val) => sum + val, 0) / values.length;
 }
 
-// Helper function untuk mendapatkan kondisi cuaca yang paling sering
 function getMostFrequentCondition(dayData) {
     const conditionCounts = {};
     
@@ -357,12 +318,12 @@ function getMostFrequentCondition(dayData) {
     );
 }
 
-// Helper function untuk format jam
+
 function formatHour(hour) {
     return `${hour}:00`;
 }
 
-// Helper function untuk format tanggal
+// Memformat jam untuk ke AM dan PM
 function formatDate(dateString) {
     const date = new Date(dateString);
     const dayName = date.toLocaleDateString('id-ID', { weekday: 'short' });
